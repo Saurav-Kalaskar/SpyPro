@@ -1,20 +1,23 @@
+// components/location-tracker/Map.tsx
 import React, { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface LocationData {
+  userId: string;
   latitude: number;
   longitude: number;
   altitude?: number;
   estimatedFloor?: number;
   accuracy?: number;
+  timestamp: string;
 }
 
 interface MapProps {
-  locationData: LocationData;
+  locations: LocationData[];
 }
 
-const Map = ({ locationData }: MapProps) => {
+const Map = ({ locations }: MapProps) => {
   useEffect(() => {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
     if (!mapboxgl.accessToken) {
@@ -22,10 +25,13 @@ const Map = ({ locationData }: MapProps) => {
       return;
     }
 
+    const latestLocation = locations[locations.length - 1];
+    if (!latestLocation) return;
+
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [locationData.longitude, locationData.latitude],
+      center: [latestLocation.longitude, latestLocation.latitude],
       zoom: 18,
       pitch: 60,
       bearing: -60,
@@ -49,28 +55,32 @@ const Map = ({ locationData }: MapProps) => {
         }
       });
 
-      // Add marker with altitude info
-      if (locationData.altitude) {
+      // Add markers for all locations
+      locations.forEach((location, index) => {
+        const isLatest = index === locations.length - 1;
+        
         new mapboxgl.Marker({
-          color: '#FF0000',
-          scale: 0.8
+          color: isLatest ? '#FF0000' : '#666666',
+          scale: isLatest ? 0.8 : 0.6
         })
-        .setLngLat([locationData.longitude, locationData.latitude])
+        .setLngLat([location.longitude, location.latitude])
         .setPopup(
           new mapboxgl.Popup().setHTML(`
-            <div>
-              <p>Altitude: ${Math.round(locationData.altitude)}m</p>
-              <p>Floor: ${locationData.estimatedFloor || 'Unknown'}</p>
-              <p>Accuracy: ${locationData.accuracy ? `±${Math.round(locationData.accuracy)}m` : 'Unknown'}</p>
+            <div class="p-2">
+              <p><strong>${isLatest ? 'Current Location' : 'Previous Location'}</strong></p>
+              <p>Time: ${new Date(location.timestamp).toLocaleString()}</p>
+              ${location.altitude ? `<p>Altitude: ${Math.round(location.altitude)}m</p>` : ''}
+              ${location.estimatedFloor ? `<p>Floor: ${location.estimatedFloor}</p>` : ''}
+              ${location.accuracy ? `<p>Accuracy: ±${Math.round(location.accuracy)}m</p>` : ''}
             </div>
           `)
         )
         .addTo(map);
-      }
+      });
     });
 
     return () => map.remove();
-  }, [locationData]);
+  }, [locations]);
 
   return <div id="map" className="w-full h-[600px]" />;
 };
