@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import LocationFetcher from '../../components/location-tracker/LocationFetcher';
 
